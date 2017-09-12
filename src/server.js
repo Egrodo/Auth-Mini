@@ -28,13 +28,33 @@ const queryAndThen = (query, res, cb) => {
   });
 };
 
-server.get('/accepted-answer/:soID', (req, res) => {
-  queryAndThen(Post.findOne({ soID: req.params.soID }), res, (post) => {
+server.get('/', (req, res) => {
+  res.json({ success: 'working' });
+});
+// TODO: This tries to find the post. Consolidate this into middleware.
+
+const findPost = (req, res, next) => {
+  const { id } = req.params.soID;
+
+  if (!id) {
+    res.status(STATUS_USER_ERROR);
+    res.json({ error: 'You need to include an ID.' });
+    return;
+  }
+
+  req.id = id;
+  queryAndThen(Post.findOne({ soID: id }), res, (post) => {
     if (!post) {
       sendUserError("Couldn't find post with given ID", res);
-      return;
+      return false;
     }
+  });
+    
+  next();
+};
 
+server.get('/accepted-answer/:soID', findPost, (req, res) => {
+  queryAndThen(Post.findOne({ soID: id }), res, (post) => {
     const query = Post.findOne({ soID: post.acceptedAnswerID });
     queryAndThen(query, res, (answer) => {
       if (!answer) {
@@ -46,7 +66,7 @@ server.get('/accepted-answer/:soID', (req, res) => {
   });
 });
 
-server.get('/top-answer/:soID', (req, res) => {
+server.get('/top-answer/:soID', findPost, (req, res) => {
   queryAndThen(Post.findOne({ soID: req.params.soID }), res, (post) => {
     if (!post) {
       sendUserError("Couldn't find post with given ID", res);
@@ -70,7 +90,7 @@ server.get('/top-answer/:soID', (req, res) => {
   });
 });
 
-server.get('/popular-jquery-questions', (req, res) => {
+server.get('/r-jquery-questions', (req, res) => {
   const query = Post.find({
     parentID: null,
     tags: 'jquery',
@@ -96,5 +116,6 @@ server.get('/npm-answers', (req, res) => {
     queryAndThen(answerQuery, res, answers => res.json(answers));
   });
 });
+
 
 module.exports = { server };
